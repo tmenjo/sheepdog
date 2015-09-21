@@ -499,8 +499,20 @@ static void queue_request(struct request *req)
 		if (!is_force_op(req->op)) {
 			if (sys->cinfo.ctime == 0)
 				rsp->result = SD_RES_WAIT_FOR_FORMAT;
-			else
+			else {
+				if (hdr->opcode == SD_OP_READ_OBJ ||
+				    hdr->opcode == SD_OP_READ_PEER ||
+				    hdr->opcode == SD_OP_READ_VDIS ||
+				    hdr->opcode == SD_OP_READ_DEL_VDIS)
+					/*
+					 * allow reading inode object and
+					 * bitmaps for constructing in-memory
+					 * vdi state during boot time
+					 */
+					break;
+
 				rsp->result = SD_RES_WAIT_FOR_JOIN;
+			}
 			goto done;
 		}
 		break;

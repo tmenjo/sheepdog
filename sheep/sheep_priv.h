@@ -186,6 +186,8 @@ struct system_info {
 	/* upgrade data layout before starting service if necessary*/
 	bool upgrade;
 	struct sd_stat stat;
+
+	bool avoid_diskfull;
 };
 
 struct disk {

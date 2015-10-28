@@ -139,6 +139,8 @@ static struct sd_option sheep_options[] = {
 	 cluster_help},
 	{'D', "directio", false, "use direct IO for backend store"},
 	{'f', "foreground", false, "make the program run in foreground"},
+	{'F', "avoid-diskfull", false, "stop sheep process if a recovery"
+	 "process can cause disk full"},
 	{'g', "gateway", false, "make the program run as a gateway mode"},
 	{'h', "help", false, "display this help and exit"},
 	{'i', "ioaddr", true, "use separate network card to handle IO requests"
@@ -741,6 +743,9 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			daemonize = false;
+			break;
+		case 'F':
+			sys->avoid_diskfull = true;
 			break;
 		case 'g':
 			if (nr_vnodes > 0) {

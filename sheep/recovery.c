@@ -80,6 +80,8 @@ struct recovery_info {
 	bool throttling;
 
 	bool wildcard;
+
+	bool cancel;		/* for avoiding disk full by recovery */
 };
 
 struct recovery_timer {
@@ -1048,6 +1050,11 @@ static void finish_object_list(struct work *work)
 	 */
 	uint32_t nr_threads = md_nr_disks() * 2;
 
+	if (rinfo->cancel) {
+		finish_recovery(rinfo);
+		return;
+	}
+
 	rinfo->state = RW_RECOVER_OBJ;
 	rinfo->count = rlw->count;
 	rinfo->oids = rlw->oids;
@@ -1151,6 +1158,83 @@ static void screen_object_list(struct recovery_list_work *rlw,
 	xqsort(rlw->oids, rlw->count, obj_cmp);
 }
 
+static int vnode_to_node_idx(struct sd_vnode *vnode, int nr_nodes,
+			     struct sd_node *nodes)
+{
+	for (int i = 0; i < nr_nodes; i++) {
+		if (node_id_cmp(&vnode->node->nid, &nodes[i].nid) == 0)
+			return i;
+	}
+
+	panic("vnode couldn't found in the node array");
+	return -1;		/* never executed */
+}
+
+static bool check_diskfull_possibility(uint32_t epoch, struct vnode_info *vinfo,
+				       int nr_nodes, struct sd_node *nodes)
+{
+	uint64_t **oids_per_node;
+	size_t *nr_oids;
+	uint64_t *required_space_per_node;
+	const struct sd_vnode *vnodes[SD_MAX_COPIES];
+	bool ret = false;
+
+	oids_per_node = xcalloc(nr_nodes, sizeof(uint64_t *));
+	nr_oids = xcalloc(nr_nodes, sizeof(size_t));
+	required_space_per_node = xcalloc(nr_nodes, sizeof(uint64_t));
+
+	for (int i = 0; i < nr_nodes; i++)
+		oids_per_node[i] = fetch_object_list(&nodes[i], epoch,
+						     &nr_oids[i]);
+
+	for (int i = 0; i < nr_nodes; i++) {
+		uint64_t *oids = oids_per_node[i];
+
+		for (int j = 0; j < nr_oids[i]; j++) {
+			int nr_objs = get_obj_copy_number(oids[j],
+							  vinfo->nr_zones);
+
+			oid_to_vnodes(oids[j], &vinfo->vroot, nr_objs, vnodes);
+
+			for (int k = 0; k < nr_objs; k++) {
+				int node_idx = vnode_to_node_idx(
+					(struct sd_vnode *)vnodes[k],
+					nr_nodes, nodes);
+
+				/*
+				 * TODO: current calculation doesn't consider
+				 * about the differences between object types
+				 * e.g. inode, ledger, and normal data objects
+				 */
+				required_space_per_node[node_idx] +=
+					get_vdi_object_size(
+						oid_to_vid(oids[j]));
+			}
+		}
+	}
+
+	for (int i = 0; i < nr_nodes; i++) {
+		if (nodes[i].space < required_space_per_node[i]) {
+			sd_emerg("node %s will cause disk full, stopping whole"
+				 " cluster", node_to_str(&nodes[i]));
+			ret = true;
+		}
+
+		sd_debug("node %s (space: %"PRIu64") can store required space"
+			 " during next recovery (%"PRIu64")",
+			 node_to_str(&nodes[i]),
+			 nodes[i].space, required_space_per_node[i]);
+
+		free(oids_per_node[i]);
+	}
+
+	free(oids_per_node);
+	free(nr_oids);
+	free(required_space_per_node);
+
+	return ret;
+}
+
 /* Prepare the object list that belongs to this node */
 static void prepare_object_list(struct work *work)
 {
@@ -1172,6 +1256,16 @@ static void prepare_object_list(struct work *work)
 
 	nodes = xmalloc(sizeof(struct sd_node) * nr_nodes);
 	nodes_to_buffer(&rw->cur_vinfo->nroot, nodes);
+
+	if (sys->avoid_diskfull && check_diskfull_possibility(rw->epoch,
+				      rw->cur_vinfo, nr_nodes, nodes)) {
+		sd_emerg("canceling recovery because of disk full");
+		sd_emerg("please add a new node ASAP");
+		rw->rinfo->cancel = true;
+
+		goto out;
+	}
+
 again:
 	/* We need to start at random node for better load balance */
 	for (i = start; i < end; i++) {

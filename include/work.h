@@ -15,11 +15,16 @@ struct work {
 	struct list_node w_list;
 	work_func_t fn;
 	work_func_t done;
+
+	int cpu;
 };
 
 struct work_queue {
 	int wq_state;
-	struct list_head pending_list;
+	struct list_head *pending_lists;
+
+	size_t *nr_threads;
+	size_t *nr_queued_work;
 };
 
 enum wq_thread_control {
@@ -65,7 +70,8 @@ struct work_queue *create_work_queue(const char *name, enum wq_thread_control);
 struct work_queue *create_ordered_work_queue(const char *name);
 struct work_queue *create_fixed_work_queue(const char *name, int nr_threads);
 void queue_work(struct work_queue *q, struct work *work);
-bool work_queue_empty(struct work_queue *q);
+bool work_queue_empty(struct work_queue *q, int cpu);
+bool work_queue_empty_all(struct work_queue *q);
 int wq_trace_init(void);
 
 #ifdef HAVE_TRACE

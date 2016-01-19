@@ -53,7 +53,7 @@ Usage
 
 * Configure corosync.
 
-   Nearly every modern Linux distribution has x86_64 corosync binaries pre-built
+   Nearly every modern Linux distribution has x86\_64 corosync binaries pre-built
    available via their repositories. We recommend you use these packages if they
    are available on your distribution.
 

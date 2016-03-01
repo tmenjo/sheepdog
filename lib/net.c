@@ -414,7 +414,17 @@ char *sockaddr_in_to_str(struct sockaddr_in *sockaddr)
 	return str;
 }
 
-uint8_t *str_to_addr(const char *ipstr, uint8_t *addr)
+/**
+ * @param ipstr a hostname, or a string representating IP address such as
+ *              "192.0.2.235" or "2001:db8:a0b:12f0::1"
+ * @param addr 16-octet buffer
+ * @return true if succeeded; false if failed.
+ *         When succeeded, struct in_addr or in6_addr corresponding to
+ *         ipstr is copied to addr; note that in case of IPv4 (AF_INET),
+ *         the beginning of 12 octets becomes zero and the end of 4 octets
+ *         becomes in_addr.
+ */
+bool str_to_addr(const char *ipstr, uint8_t *addr)
 {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
@@ -431,7 +441,7 @@ uint8_t *str_to_addr(const char *ipstr, uint8_t *addr)
 
 	res = getaddrinfo(ipstr, NULL, &hints, &result);
 	if (res != 0)
-		return NULL;
+		return false;
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
 		switch (rp->ai_family) {
@@ -450,11 +460,11 @@ uint8_t *str_to_addr(const char *ipstr, uint8_t *addr)
 	}
 
 	if (rp == NULL)
-		return NULL;
+		return false;
 
 	freeaddrinfo(result);
 
-	return addr;
+	return true;
 }
 
 int set_snd_timeout(int fd)

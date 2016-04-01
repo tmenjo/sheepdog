@@ -231,7 +231,8 @@ static inline uint64_t wq_get_roof(struct wq_info *wi)
 		nr = SIZE_MAX;
 		break;
 	case WQ_FIXED:
-		nr = wi->nr_threads;
+		/* FIXME: all threads would run on CPU 0 */
+		nr = wi->q.nr_threads[0];
 		break;
 	default:
 		panic("Invalid threads control %d", wi->tc);
@@ -543,7 +544,8 @@ struct work_queue *create_fixed_work_queue(const char *name, int nr_threads)
 		return NULL;
 
 	wi = container_of(wq, struct wq_info, q);
-	ret = create_worker_threads(wi, nr_threads);
+	/* FIXME: make all threads run on CPU 0 */
+	ret = create_worker_threads(wi, nr_threads, 0);
 	if (ret) {
 		panic("failed to create a fixed workqueue: %s", name);
 	}

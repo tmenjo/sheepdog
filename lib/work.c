@@ -293,7 +293,7 @@ static int create_worker_threads(struct wq_info *wi, size_t nr_threads, int core
 			return -1;
 		}
 
-		if (wi->q.wq_state != WQ_ORDERED &&
+		if (wi->tc != WQ_ORDERED &&
 		    pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset))
 			sd_info("set thread affinity failed");
 
@@ -312,7 +312,7 @@ void queue_work(struct work_queue *q, struct work *work)
 	struct wq_info *wi = container_of(q, struct wq_info, q);
 	int cpu;
 
-	if (q->wq_state == WQ_ORDERED)
+	if (wi->tc == WQ_ORDERED)
 		cpu = 0;
 	else if (is_main_thread()) {
 		static __thread int next_core;
@@ -379,7 +379,7 @@ static void *worker_routine(void *arg)
 	/* wait pthread_setaffinity_np() in create_worker_threads() */
 	eventfd_xread(wi->create_efd);
 	/* now I'm running on correct cpu */
-	cpu = wi->q.wq_state == WQ_ORDERED ? 0 : mycpu();
+	cpu = wi->tc == WQ_ORDERED ? 0 : mycpu();
 
 	while (true) {
 

@@ -264,7 +264,7 @@ static bool wq_need_shrink(struct wq_info *wi, int cpu)
 	if (wi->tc == WQ_FIXED)
 		return false;
 
-	if (uatomic_read(&wi->q.nr_queued_work[cpu]) == 1)
+	if (wi->q.nr_threads[cpu] == 1)
 		/* we need at least one thread on each core */
 		return false;
 

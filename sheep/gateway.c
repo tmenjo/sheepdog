@@ -780,9 +780,13 @@ static void async_update_obj_refcnt_done(struct work *work)
 
 int gateway_write_obj(struct request *req)
 {
+	struct sd_req *hdr = &req->rq;
+
+	sd_info("in; oid=%016" PRIx64 ", offset=%" PRIu32 "; nano_time=%" PRIu64,
+		hdr->obj.oid, hdr->obj.offset, nano_time());
+
 	uint64_t oid = req->rq.obj.oid;
 	int ret;
-	struct sd_req *hdr = &req->rq;
 	uint32_t *vids = NULL, *new_vids = req->data;
 	struct generation_reference *refs = NULL, *zeroed_refs = NULL;
 	struct update_obj_refcnt_work *refcnt_work;
@@ -884,6 +888,8 @@ free_bufs:
 out:
 	free(zeroed_refs);
 
+	sd_info("out; oid=%016" PRIx64 ", offset=%" PRIu32 "; nano_time=%" PRIu64,
+		hdr->obj.oid, hdr->obj.offset, nano_time());
 	return ret;
 }
 

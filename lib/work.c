@@ -37,6 +37,14 @@
 #define TRACEPOINT_DEFINE
 #include "work_tp.h"
 
+static inline uint64_t nano_time(void)
+{
+        struct timespec t;
+        if (clock_gettime(CLOCK_REALTIME, &t))
+                return 0;
+        return t.tv_sec * 1000 * 1000 * 1000 + t.tv_nsec;
+}
+
 /*
  * The protection period from shrinking work queue.  This is necessary
  * to avoid many calls of pthread_create.  Without it, threads are
@@ -347,6 +355,8 @@ retest:
 			goto retest;
 		}
 
+		sd_info("up; nano_time=%" PRIu64, nano_time());
+
 		work = list_first_entry(&wi->q.pending_list,
 				       struct work, w_list);
 
@@ -363,6 +373,8 @@ retest:
 		sd_mutex_unlock(&wi->finished_lock);
 
 		eventfd_xwrite(efd, 1);
+
+		sd_info("down; nano_time=%" PRIu64, nano_time());
 	}
 
 	pthread_exit(NULL);

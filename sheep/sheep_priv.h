@@ -45,6 +45,14 @@
 #include "fec.h"
 #include "common.h"
 
+static inline uint64_t nano_time(void)
+{
+	struct timespec t;
+	if (clock_gettime(CLOCK_REALTIME, &t))
+		return 0;
+	return t.tv_sec * 1000 * 1000 * 1000 + t.tv_nsec;
+}
+
  /*
   * Functions that update global info must be called in the main
   * thread.  Add main_fn markers to such functions.

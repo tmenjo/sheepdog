@@ -741,6 +741,8 @@ main_fn void get_request(struct request *req)
 
 static void rx_work(struct work *work)
 {
+	sd_info("in; nano_time=%" PRIu64, nano_time());
+
 	struct client_info *ci = container_of(work, struct client_info,
 					      rx_work);
 	int ret;
@@ -776,6 +778,16 @@ static void rx_work(struct work *work)
 	}
 
 	tracepoint(request, rx_work, conn->fd, work, req, hdr.opcode);
+
+	if(hdr.opcode == SD_OP_WRITE_OBJ || hdr.opcode == SD_OP_WRITE_PEER)
+		sd_info("out; opcode=%" PRIu8 ", oid=%016" PRIx64
+			", offset=%" PRIu32 ", length=%" PRIu32
+			"; nano_time=%" PRIu64,
+			hdr.opcode, hdr.obj.oid,
+			hdr.obj.offset, hdr.data_length,
+			nano_time());
+	else
+		sd_info("out; nano_time=%" PRIu64, nano_time());
 }
 
 static void rx_main(struct work *work)
@@ -960,6 +972,8 @@ static struct client_info *create_client(int fd)
 
 static void client_handler(int fd, int events, void *data)
 {
+	sd_info("in; nano_time=%" PRIu64, nano_time());
+
 	struct client_info *ci = (struct client_info *)data;
 
 	sd_debug("%x, %d", events, ci->conn.dead);
@@ -1014,6 +1028,8 @@ static void client_handler(int fd, int events, void *data)
 		tracepoint(request, queue_request, fd, &ci->tx_work, 0);
 		queue_work(sys->net_wqueue, &ci->tx_work);
 	}
+
+	sd_info("out; nano_time=%" PRIu64, nano_time());
 }
 
 static void listen_handler(int listen_fd, int events, void *data)

@@ -998,6 +998,10 @@ out:
 static int peer_write_obj(struct request *req)
 {
 	struct sd_req *hdr = &req->rq;
+
+	sd_info("in; oid=%016" PRIx64 ", offset=%" PRIu32 "; nano_time=%" PRIu64,
+		hdr->obj.oid, hdr->obj.offset, nano_time());
+
 	struct siocb iocb = { };
 	uint64_t oid = hdr->obj.oid;
 
@@ -1008,7 +1012,11 @@ static int peer_write_obj(struct request *req)
 	iocb.ec_index = hdr->obj.ec_index;
 	iocb.copy_policy = hdr->obj.copy_policy;
 
-	return sd_store->write(oid, &iocb);
+	const int ret = sd_store->write(oid, &iocb);
+
+	sd_info("out; oid=%016" PRIx64 ", offset=%" PRIu32 "; nano_time=%" PRIu64,
+		hdr->obj.oid, hdr->obj.offset, nano_time());
+	return ret;
 }
 
 static int peer_create_and_write_obj(struct request *req)

@@ -315,8 +315,7 @@ void queue_work(struct work_queue *q, struct work *work)
 	if (wi->tc == WQ_ORDERED)
 		cpu = 0;
 	else if (is_main_thread()) {
-		static __thread int next_core;
-		cpu = next_core++ % nr_cores;
+		cpu = mycpu();
 	} else
 		cpu = mycpu();
 

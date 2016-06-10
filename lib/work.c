@@ -314,9 +314,7 @@ void queue_work(struct work_queue *q, struct work *work)
 
 	if (wi->tc == WQ_ORDERED)
 		cpu = 0;
-	else if (is_main_thread()) {
-		cpu = mycpu();
-	} else
+	else
 		cpu = mycpu();
 
 	tracepoint(work, queue_work, wi, work);

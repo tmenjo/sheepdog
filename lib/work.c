@@ -310,12 +310,7 @@ static int create_worker_threads(struct wq_info *wi, size_t nr_threads, int core
 void queue_work(struct work_queue *q, struct work *work)
 {
 	struct wq_info *wi = container_of(q, struct wq_info, q);
-	int cpu;
-
-	if (wi->tc == WQ_ORDERED)
-		cpu = 0;
-	else
-		cpu = mycpu();
+	const int cpu = (wi->tc == WQ_ORDERED) ? 0 : mycpu();
 
 	tracepoint(work, queue_work, wi, work);
 
